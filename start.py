@@ -29,6 +29,28 @@ def seed_data() -> None:
         raise RuntimeError("Default bot template is missing from the image.")
     BOTS_DIR.mkdir(parents=True, exist_ok=True)
 
+    # Pin paths explicitly: TS3AudioBot may resolve relative paths from its
+    # assembly directory rather than the process working directory.
+    root_config = DATA / "ts3audiobot.toml"
+    root_text = root_config.read_text(encoding="utf-8")
+    root_text, count = re.subn(
+        r'(?ms)(\\[configs\\]\\s*.*?^bots_path\\s*=\\s*)".*?"',
+        lambda _match: _match.group(1) + toml_string(str(BOTS_DIR.resolve())),
+        root_text,
+        count=1,
+    )
+    if count != 1:
+        raise RuntimeError("Could not set configs.bots_path in ts3audiobot.toml.")
+    root_text, count = re.subn(
+        r'(?ms)(\\[web\\.interface\\]\\s*.*?^enabled\\s*=\\s*)(?:true|false)',
+        lambda _match: _match.group(1) + "false",
+        root_text,
+        count=1,
+    )
+    if count != 1:
+        raise RuntimeError("Could not disable the unused WebInterface in ts3audiobot.toml.")
+    root_config.write_text(root_text, encoding="utf-8")
+
 
 def toml_string(value: str) -> str:
     return json.dumps(str(value), ensure_ascii=False)
