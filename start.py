@@ -126,14 +126,16 @@ def prepare_bot(bot: dict) -> None:
         "server_password = { pw = " + toml_string(bot["server_password"]) + " }",
         "server password"
     )
-    # Preserve the upstream empty table when no channel password is set.
-    # This avoids changing the config shape unnecessarily.
+    # Keep the upstream empty table when no channel password is set.
     if bot["channel_password"]:
-        text = replace_value(
-            text, r"(?m)^channel_password\s*=\s*\{[^\n]*\}\s*$",
-            "channel_password = { pw = " + toml_string(bot["channel_password"]) + " }",
-            "channel password"
-        )
+        channel_password_value = "channel_password = { pw = " + toml_string(bot["channel_password"]) + " }"
+    else:
+        channel_password_value = "channel_password = { }"
+    text = replace_value(
+        text, r"(?m)^channel_password\s*=\s*\{[^\n]*\}\s*$",
+        channel_password_value,
+        "channel password"
+    )
 
     config_path.write_text(text, encoding="utf-8")
     log(f"Configured the single bot as '{bot['nickname']}' -> {server}")
