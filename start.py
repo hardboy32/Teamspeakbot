@@ -135,7 +135,7 @@ def prepare_bot(bot: dict) -> None:
         server = f"{server}:9987"
 
     text = config_path.read_text(encoding="utf-8")
-    text = replace_value(text, r"(?m)^run\s*=\s*(?:true|false)\s*$", "true", "auto-start")
+    text = replace_value(text, r"(?m)^run\s*=\s*(?:true|false)\s*$", "run = true", "auto-start")
     text = replace_value(
         text, r'(?m)^address\s*=\s*".*"\s*$',
         "address = " + toml_string(server), "server address"
