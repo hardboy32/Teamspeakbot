@@ -130,7 +130,7 @@ def prepare_bot(bot: dict) -> None:
     # This avoids changing the config shape unnecessarily.
     if bot["channel_password"]:
         text = replace_value(
-            text, r"(?m)^channel_password\\s*=\\s*\\{[^\\n]*\\}\\s*$",
+            text, r"(?m)^channel_password\s*=\s*\{[^\n]*\}\s*$",
             "channel_password = { pw = " + toml_string(bot["channel_password"]) + " }",
             "channel password"
         )
