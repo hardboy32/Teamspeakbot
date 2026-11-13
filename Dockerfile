@@ -11,6 +11,7 @@ RUN apt-get update \
 # Railway's persistent volume mounts over /data, so the startup script seeds it.
 COPY --from=upstream /data/ /app/default-data/
 COPY start.py /app/start.py
+COPY NLog.config /app/NLog.config
 
 ENV DATA_DIR=/app/data \
     BOT_NICKNAME=MusicBot \
