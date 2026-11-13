@@ -60,13 +60,13 @@ def update_bot_load_list(active_ids: set[str]) -> None:
     entries = "\n".join(
         f"{bot_id} = {{ run = true }}" for bot_id in sorted(active_ids)
     )
-    section = "[bots]\\n" + entries + "\n"
+    section = "[bots]\n" + entries + "\n"
 
     pattern = r"(?ms)^\[bots\]\s*.*?(?=^\[|\Z)"
     if re.search(pattern, text):
         text = re.sub(pattern, section, text, count=1)
     else:
-        text = text.rstrip() + "\\n\\n" + section
+        text = text.rstrip() + "\n\n" + section
 
     root_config.write_text(text, encoding="utf-8")
 
