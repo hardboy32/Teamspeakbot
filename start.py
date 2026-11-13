@@ -57,12 +57,12 @@ def update_bot_load_list(active_ids: set[str]) -> None:
     text = root_config.read_text(encoding="utf-8")
 
     # TS3AudioBot starts only instances explicitly listed in the root [bots] table.
-    entries = "\\n".join(
+    entries = "\n".join(
         f"{bot_id} = {{ run = true }}" for bot_id in sorted(active_ids)
     )
-    section = "[bots]\\n" + entries + "\\n"
+    section = "[bots]\\n" + entries + "\n"
 
-    pattern = r"(?ms)^\\[bots\\]\\s*.*?(?=^\\[|\\Z)"
+    pattern = r"(?ms)^\[bots\]\s*.*?(?=^\[|\Z)"
     if re.search(pattern, text):
         text = re.sub(pattern, section, text, count=1)
     else:
