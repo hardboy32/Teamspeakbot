@@ -130,26 +130,6 @@ def load_instances() -> list[dict]:
     return instances
 
 
-def update_bot_load_list(instances: list[dict]) -> None:
-    # TS3AudioBot 0.13 still requires the [bots] autorun table in the root
-    # config. The folders alone are not enough to make instances start.
-    root_config = DATA / "ts3audiobot.toml"
-    text = root_config.read_text(encoding="utf-8")
-    entries = "[bots]\n" + "".join(
-        f'{str(item["id"])} = {{ run = true }}\n' for item in instances
-    )
-    pattern = r"(?ms)^\[bots\]\s*.*?(?=^\[|\Z)"
-    if re.search(pattern, text):
-        text = re.sub(pattern, lambda _m: entries + "\n", text, count=1)
-    else:
-        marker = re.search(r"(?m)^\[configs\]\s*$", text)
-        if not marker:
-            raise RuntimeError("Could not find [configs] section to insert the [bots] load list.")
-        text = text[:marker.start()] + entries + "\n" + text[marker.start():]
-    root_config.write_text(text, encoding="utf-8")
-    log("Updated TS3AudioBot [bots] autorun list: " + ", ".join(str(x["id"]) for x in instances))
-
-
 def prepare_bot(item: dict) -> None:
     bot_id = str(item["id"]).strip()
     bot_dir = BOTS_DIR / bot_id
@@ -207,7 +187,6 @@ def main() -> None:
         instances = load_instances()
         for item in instances:
             prepare_bot(item)
-        update_bot_load_list(instances)
         active_ids = {str(item["id"]) for item in instances}
         disable_unlisted_bots(active_ids)
     except Exception as exc:
@@ -217,6 +196,26 @@ def main() -> None:
     # TS3AudioBot resolves ts3audiobot.toml and configs.bots_path relative to its
     # current working directory. Run it from DATA so it loads the files we just generated.
     os.chdir(DATA)
+
+    # Emit safe diagnostics for the exact directory TS3AudioBot will enumerate.
+    try:
+        import tomllib
+        parsed = tomllib.loads((DATA / "ts3audiobot.toml").read_text(encoding="utf-8"))
+        configured_bots = parsed.get("configs", {}).get("bots_path", "bots")
+        resolved_bots = Path(configured_bots)
+        if not resolved_bots.is_absolute():
+            resolved_bots = DATA / resolved_bots
+        log(f"Diagnostic: configs.bots_path={configured_bots!r}; resolved={resolved_bots}; exists={resolved_bots.is_dir()}")
+        if resolved_bots.is_dir():
+            log(f"Diagnostic: bot folders={sorted(p.name for p in resolved_bots.iterdir() if p.is_dir())}")
+        for item in instances:
+            bot_file = BOTS_DIR / str(item["id"]) / "bot.toml"
+            if bot_file.exists():
+                bot_text = bot_file.read_text(encoding="utf-8")
+                run_match = re.search(r"(?m)^run\\s*=\\s*(true|false)\\s*$", bot_text)
+                log(f"Diagnostic: {bot_file} exists; run={run_match.group(1) if run_match else 'NOT FOUND'}")
+    except Exception as exc:
+        log(f"Diagnostic config inspection failed: {exc}")
 
     log(f"Starting TS3AudioBot with {len(instances)} bot instance(s) from {DATA}.")
     os.execvp("dotnet", [
