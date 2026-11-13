@@ -6,7 +6,6 @@ import os
 import re
 import shutil
 import sys
-import time
 from pathlib import Path
 
 DATA = Path(os.getenv("DATA_DIR", "/data"))
@@ -37,7 +36,7 @@ def toml_string(value: str) -> str:
 
 
 def replace_value(text: str, pattern: str, replacement: str, label: str) -> str:
-    updated, count = re.subn(pattern, replacement, text, count=1, flags=re.MULTILINE)
+    updated, count = re.subn(pattern, lambda _match: replacement, text, count=1, flags=re.MULTILINE)
     if count != 1:
         raise RuntimeError(f"Could not update {label} in bot.toml; configuration format changed.")
     return updated
