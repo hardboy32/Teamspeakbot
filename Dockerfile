@@ -12,7 +12,7 @@ RUN apt-get update \
 COPY --from=upstream /data/ /app/default-data/
 COPY start.py /app/start.py
 
-ENV DATA_DIR=/data \
+ENV DATA_DIR=/app/data \
     TS_PORT=9987 \
     BOT_NICKNAME=MusicBot \
     PYTHONDONTWRITEBYTECODE=1 \
