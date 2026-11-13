@@ -15,7 +15,7 @@ BOTS_DIR = DATA / "bots"
 TEMPLATE = DEFAULTS / "bots" / "default" / "bot.toml"
 NLOG_TEMPLATE = Path("/app/NLog.config")
 BOT_ID = "bot1"
-STARTUP_BUILD = "toml-run-key-fix-v1"
+STARTUP_BUILD = "commander-and-youtube-search-v1"
 
 
 def log(message: str) -> None:
@@ -79,6 +79,82 @@ def install_diagnostic_logging() -> None:
     shutil.copy2(NLOG_TEMPLATE, DATA / "NLog.config")
     log("Installed diagnostic NLog config; console will include full exceptions.")
 
+def install_feature_rights() -> None:
+    """Allow the built-in YouTube-search aliases and Channel Commander event."""
+    rights_path = DATA / "rights.toml"
+    if not rights_path.is_file():
+        log("Warning: rights.toml is missing; custom search/commander permissions were not added.")
+        return
+
+    rights_text = rights_path.read_text(encoding="utf-8")
+    required = (
+        "cmd.xecute",
+        "cmd.param",
+        "cmd.search.*",
+        "cmd.bot.commander.on",
+        "cmd.bot.commander.off",
+    )
+    match = re.search(r'(?ms)^"\+"\s*=\s*\[.*?^\]', rights_text)
+    if not match:
+        log("Warning: could not locate the global '+' permissions in rights.toml.")
+        return
+
+    block = match.group(0)
+    missing = [right for right in required if not re.search(r'"' + re.escape(right) + r'"', block)]
+    if not missing:
+        return
+
+    insert_at = block.rfind("]")
+    addition = "".join(f'\n    "{right}",' for right in missing)
+    updated_block = block[:insert_at].rstrip() + addition + "\n]"
+    updated = rights_text[:match.start()] + updated_block + rights_text[match.end():]
+    try:
+        tomllib.loads(updated)
+    except tomllib.TOMLDecodeError as exc:
+        log(f"Warning: could not safely update rights.toml ({exc}); leaving it unchanged.")
+        return
+
+    rights_path.write_text(updated, encoding="utf-8")
+    log("Enabled YouTube search aliases and Channel Commander permissions.")
+
+
+def install_bot_features(text: str) -> str:
+    aliases = (
+        "[commands.alias]\n"
+        'yt = "!search from youtube (!param 0)"\n'
+        'ytp = "!xecute (!search from youtube (!param 0)) (!search play 0)"\n'
+        'yta = "!xecute (!search from youtube (!param 0)) (!search add 0)"\n'
+    )
+    text, alias_count = re.subn(
+        r"(?ms)^\[commands\.alias\]\s*$.*?(?=^\[|\Z)",
+        lambda _match: aliases + "\n",
+        text,
+        count=1,
+    )
+    if alias_count != 1:
+        raise RuntimeError("Could not configure YouTube search aliases in bot.toml.")
+
+    events = (
+        "[events]\n"
+        'onconnect = "!bot commander on"\n'
+    )
+    text, event_count = re.subn(
+        r"(?ms)^\[events\]\s*$.*?(?=^\[|\Z)",
+        lambda _match: events + "\n",
+        text,
+        count=1,
+    )
+    if event_count != 1:
+        raise RuntimeError("Could not enable Channel Commander on connect in bot.toml.")
+
+    parsed = tomllib.loads(text)
+    configured_aliases = parsed.get("commands", {}).get("alias", {})
+    if not all(name in configured_aliases for name in ("yt", "ytp", "yta")):
+        raise RuntimeError("YouTube aliases were not retained in generated bot.toml.")
+    if parsed.get("events", {}).get("onconnect") != "!bot commander on":
+        raise RuntimeError("Channel Commander startup event was not retained in bot.toml.")
+    return text
+
 
 def load_single_bot() -> dict:
     # Keep the existing BOT1_* variable names so the current Railway setup
@@ -135,6 +211,7 @@ def prepare_bot(bot: dict) -> None:
         server = f"{server}:9987"
 
     text = config_path.read_text(encoding="utf-8")
+    text = install_bot_features(text)
     text = replace_value(text, r"(?m)^run\s*=\s*(?:true|false)\s*$", "run = true", "auto-start")
     text = replace_value(
         text, r'(?m)^address\s*=\s*".*"\s*$',
@@ -211,6 +288,7 @@ def main() -> None:
     try:
         seed_data()
         install_diagnostic_logging()
+        install_feature_rights()
         bot = load_single_bot()
         prepare_bot(bot)
         disable_other_bots()
