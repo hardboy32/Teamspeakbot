@@ -17,8 +17,7 @@ No JSON configuration is needed. No Volume is required for the bot to start. Wit
 
 | Variable name | Value |
 |---|---|
-| `TS_SERVER` | Your TeamSpeak server address or IP |
-| `TS_PORT` | `9987` (usual TeamSpeak voice port) |
+| `TS_SERVER` | TeamSpeak address and port together, e.g. `46.38.138.68:4485` |
 | `BOT_NICKNAME` | The name the bot shows in TeamSpeak |
 
 ## Optional variables
@@ -29,11 +28,11 @@ No JSON configuration is needed. No Volume is required for the bot to start. Wit
 | `TS_SERVER_PASSWORD` | TeamSpeak server password, if required |
 | `TS_CHANNEL_PASSWORD` | Channel password, if required |
 
-You can leave optional values empty. The bot uses port `9987` if no port is supplied.
+Enter the server and port together in `TS_SERVER`, such as `46.38.138.68:4485`. If you enter only an IP/host, the bot defaults to port `9987`.
 
 ## Running another bot
 
-Create a **separate Railway service/deployment** from this same repository. Set that deployment's own `TS_SERVER`, `TS_PORT`, `BOT_NICKNAME`, and optional channel/password variables.
+Create a **separate Railway service/deployment** from this same repository. Set that deployment's own `TS_SERVER` (including its port), `BOT_NICKNAME`, and optional channel/password variables.
 
 Each deployment starts only its own single bot. There are no numbered bot variables, bot counts, or JSON arrays.
 
