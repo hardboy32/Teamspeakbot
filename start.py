@@ -46,17 +46,41 @@ def replace_value(text: str, pattern: str, replacement: str, label: str) -> str:
 def load_instances() -> list[dict]:
     raw = os.getenv("BOTS_JSON", "").strip()
     if raw:
+        # Advanced compatibility mode; most users should use BOT1_SERVER, BOT1_PORT, etc.
         try:
             instances = json.loads(raw)
         except json.JSONDecodeError as exc:
             raise RuntimeError(f"BOTS_JSON is not valid JSON: {exc}") from exc
         if not isinstance(instances, list) or not instances:
             raise RuntimeError("BOTS_JSON must be a non-empty JSON array.")
+    elif os.getenv("BOT1_SERVER", "").strip():
+        # Simple Railway variables: BOT_COUNT, BOT1_SERVER, BOT1_PORT, BOT1_NICKNAME...
+        try:
+            count = int(os.getenv("BOT_COUNT", "1"))
+        except ValueError as exc:
+            raise RuntimeError("BOT_COUNT must be a number.") from exc
+        if count < 1 or count > 20:
+            raise RuntimeError("BOT_COUNT must be between 1 and 20.")
+        instances = []
+        for number in range(1, count + 1):
+            prefix = f"BOT{number}_"
+            server = os.getenv(prefix + "SERVER", "").strip()
+            if not server:
+                raise RuntimeError(f"Missing required variable {prefix}SERVER.")
+            instances.append({
+                "id": f"bot{number}",
+                "server": server,
+                "port": os.getenv(prefix + "PORT", "9987"),
+                "nickname": os.getenv(prefix + "NICKNAME", f"Music Bot {number}"),
+                "channel": os.getenv(prefix + "CHANNEL", ""),
+                "server_password": os.getenv(prefix + "SERVER_PASSWORD", ""),
+                "channel_password": os.getenv(prefix + "CHANNEL_PASSWORD", ""),
+            })
     else:
         # Backwards-compatible single-bot configuration.
         server = os.getenv("TS_SERVER", "").strip()
         if not server:
-            raise RuntimeError("Set BOTS_JSON or the required TS_SERVER variable.")
+            raise RuntimeError("Set BOT1_SERVER (recommended) or the required TS_SERVER variable.")
         instances = [{
             "id": "default",
             "server": server,
