@@ -8,7 +8,7 @@ import shutil
 import sys
 from pathlib import Path
 
-DATA = Path(os.getenv("DATA_DIR", "/data"))
+DATA = Path(os.getenv("DATA_DIR", "/app/data"))
 DEFAULTS = Path("/app/default-data")
 BOTS_DIR = DATA / "bots"
 TEMPLATE = DEFAULTS / "bots" / "default" / "bot.toml"
@@ -24,7 +24,7 @@ def seed_data() -> None:
         if not DEFAULTS.exists():
             raise RuntimeError("Default TS3AudioBot configuration is missing from the image.")
         shutil.copytree(DEFAULTS, DATA, dirs_exist_ok=True)
-        log("Created persistent configuration in /data.")
+        log(f"Created configuration in {DATA} (container storage; it may reset on redeploy).")
     if not TEMPLATE.exists():
         raise RuntimeError("Default bot template is missing from the image.")
     BOTS_DIR.mkdir(parents=True, exist_ok=True)
