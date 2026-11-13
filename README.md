@@ -2,7 +2,7 @@
 
 A TeamSpeak 3 music bot for Railway, powered by [TS3AudioBot](https://github.com/Splamy/TS3AudioBot).
 
-**One Railway deployment runs exactly one TeamSpeak bot.** To run another bot, create another Railway service/deployment from this repository and give it its own connection variables.
+**Each Railway deployment runs exactly one TeamSpeak bot.** To run another bot, create another Railway service/deployment from this same repository and give it its own variables.
 
 ## Railway setup
 
@@ -17,25 +17,25 @@ No JSON configuration is needed. No Volume is required for the bot to start. Wit
 
 | Variable name | Value |
 |---|---|
-| `BOT1_SERVER` | Your TeamSpeak server address or IP |
-| `BOT1_PORT` | `9987` (usual TeamSpeak voice port) |
-| `BOT1_NICKNAME` | The name the bot shows in TeamSpeak |
+| `TS_SERVER` | Your TeamSpeak server address or IP |
+| `TS_PORT` | `9987` (usual TeamSpeak voice port) |
+| `BOT_NICKNAME` | The name the bot shows in TeamSpeak |
 
 ## Optional variables
 
 | Variable name | Value |
 |---|---|
-| `BOT1_CHANNEL` | Channel the bot should join |
-| `BOT1_SERVER_PASSWORD` | TeamSpeak server password, if required |
-| `BOT1_CHANNEL_PASSWORD` | Channel password, if required |
+| `TS_CHANNEL` | Channel the bot should join |
+| `TS_SERVER_PASSWORD` | TeamSpeak server password, if required |
+| `TS_CHANNEL_PASSWORD` | Channel password, if required |
 
 You can leave optional values empty. The bot uses port `9987` if no port is supplied.
 
 ## Running another bot
 
-Create a **separate Railway service/deployment** from this same repository. Set that deployment's own `BOT1_SERVER`, `BOT1_PORT`, `BOT1_NICKNAME`, and optional channel/password variables.
+Create a **separate Railway service/deployment** from this same repository. Set that deployment's own `TS_SERVER`, `TS_PORT`, `BOT_NICKNAME`, and optional channel/password variables.
 
-Each deployment starts only its own single bot. You do not need `BOT_COUNT`, `BOT2_*`, `BOTS_JSON`, or a JSON file.
+Each deployment starts only its own single bot. There are no numbered bot variables, bot counts, or JSON arrays.
 
 ## Important notes
 
