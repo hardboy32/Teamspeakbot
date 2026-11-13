@@ -75,13 +75,13 @@ def load_single_bot() -> dict:
     if count and count != "1":
         raise RuntimeError("This deployment runs exactly one bot. Set BOT_COUNT=1 or remove it.")
 
-    server = os.getenv("BOT1_SERVER", "").strip() or os.getenv("TS_SERVER", "").strip()
+    server = os.getenv("TS_SERVER", "").strip() or os.getenv("TS_SERVER", "").strip()
     if not server:
-        raise RuntimeError("Missing BOT1_SERVER. Enter the TeamSpeak server address in Railway Variables.")
+        raise RuntimeError("Missing TS_SERVER. Enter the TeamSpeak server address in Railway Variables.")
 
-    port = os.getenv("BOT1_PORT", "").strip() or os.getenv("TS_PORT", "9987").strip() or "9987"
+    port = os.getenv("TS_PORT", "").strip() or os.getenv("TS_PORT", "9987").strip() or "9987"
     nickname = (
-        os.getenv("BOT1_NICKNAME", "").strip()
+        os.getenv("BOT_NICKNAME", "").strip()
         or os.getenv("BOT_NICKNAME", "").strip()
         or "MusicBot"
     )
@@ -90,10 +90,10 @@ def load_single_bot() -> dict:
         "server": server,
         "port": port,
         "nickname": nickname,
-        "channel": os.getenv("BOT1_CHANNEL", "").strip() or os.getenv("TS_CHANNEL", "").strip(),
-        "server_password": os.getenv("BOT1_SERVER_PASSWORD", "")
+        "channel": os.getenv("TS_CHANNEL", "").strip() or os.getenv("TS_CHANNEL", "").strip(),
+        "server_password": os.getenv("TS_SERVER_PASSWORD", "")
         or os.getenv("TS_SERVER_PASSWORD", ""),
-        "channel_password": os.getenv("BOT1_CHANNEL_PASSWORD", "")
+        "channel_password": os.getenv("TS_CHANNEL_PASSWORD", "")
         or os.getenv("TS_CHANNEL_PASSWORD", ""),
     }
 
