@@ -30,6 +30,22 @@ No JSON configuration is needed. No Volume is required for the bot to start. Wit
 
 Enter the server and port together in `TS_SERVER`, such as `46.38.138.68:4485`. If you enter only an IP/host, the bot defaults to port `9987`.
 
+## Music commands
+
+| Command | What it does |
+|---|---|
+| \`!play <URL>\` | Plays a direct link or supported media URL |
+| \`!play\` | Resumes paused playback |
+| \`!ytp <song name>\` | Searches YouTube and plays the first result |
+| \`!yt <song name>\` | Searches YouTube and displays matching results |
+| \`!yta <song name>\` | Searches YouTube and adds the first result to the queue |
+
+The built-in \`!play\` command is kept intact for links and resume. Use \`!ytp\` for a song name, for example \`!ytp مهدی جهانی\`.
+
+## Channel Commander indicator
+
+The bot automatically enables TeamSpeak Channel Commander when it connects. While the bot is transmitting music, TeamSpeak's speaking indicator changes between its idle and speaking colors. This is an audio-activity indicator, not a beat-synchronized lighting effect. The TeamSpeak server must allow the bot to use Channel Commander (\`b_client_use_channel_commander\`).
+
 ## Running another bot
 
 Create a **separate Railway service/deployment** from this same repository. Set that deployment's own `TS_SERVER` (including its port), `BOT_NICKNAME`, and optional channel/password variables.
