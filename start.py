@@ -15,7 +15,7 @@ BOTS_DIR = DATA / "bots"
 TEMPLATE = DEFAULTS / "bots" / "default" / "bot.toml"
 NLOG_TEMPLATE = Path("/app/NLog.config")
 BOT_ID = "bot1"
-STARTUP_BUILD = "exception-diagnostics-v1"
+STARTUP_BUILD = "toml-run-key-fix-v1"
 
 
 def log(message: str) -> None:
