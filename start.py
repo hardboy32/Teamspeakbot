@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import sys
+import tomllib
 from pathlib import Path
 
 DATA = Path(os.getenv("DATA_DIR", "/app/data"))
@@ -93,10 +94,25 @@ def load_single_bot() -> dict:
 def prepare_bot(bot: dict) -> None:
     bot_dir = BOTS_DIR / BOT_ID
     config_path = bot_dir / "bot.toml"
+    bot_dir.mkdir(parents=True, exist_ok=True)
 
-    if not config_path.exists():
-        bot_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(TEMPLATE, config_path)
+    # A previous deployment may have left a bot.toml from an older
+    # multi-bot setup or a different TS3AudioBot config schema. Rebuild
+    # from the template shipped in this exact image on every startup.
+    # Preserve the TeamSpeak identity when the old file is readable.
+    identity_key = ""
+    identity_offset = None
+    if config_path.exists():
+        try:
+            old_config = tomllib.loads(config_path.read_text(encoding="utf-8"))
+            old_identity = old_config.get("connect", {}).get("identity", {})
+            if isinstance(old_identity, dict):
+                identity_key = old_identity.get("key", "") or ""
+                identity_offset = old_identity.get("offset")
+        except Exception as exc:
+            log(f"Existing bot config is not readable; replacing it with the image template ({exc}).")
+
+    shutil.copy2(TEMPLATE, config_path)
 
     server = bot["server"]
     # TS_SERVER accepts host:port in one variable. If the port is omitted,
@@ -137,8 +153,29 @@ def prepare_bot(bot: dict) -> None:
         "channel password"
     )
 
+    if identity_key:
+        text = replace_value(
+            text, r'(?ms)(\[connect\.identity\].*?^key\s*=\s*)".*?"',
+            lambda_value := "key = " + toml_string(identity_key),
+            "existing TeamSpeak identity"
+        )
+        if identity_offset is not None:
+            text = replace_value(
+                text, r"(?ms)(\[connect\.identity\].*?^offset\s*=\s*)\d+",
+                "offset = " + str(int(identity_offset)),
+                "existing identity offset"
+            )
+
+    # Validate the generated TOML before starting .NET. This catches
+    # malformed values at startup instead of letting TS3AudioBot silently
+    # skip the bot instance.
+    parsed = tomllib.loads(text)
+    if parsed.get("connect", {}).get("address") != server:
+        raise RuntimeError("Generated bot.toml did not retain the configured server address.")
+
     config_path.write_text(text, encoding="utf-8")
     log(f"Configured the single bot as '{bot['nickname']}' -> {server}")
+    log(f"Validated generated bot config; preserved existing identity={bool(identity_key)}.")
 
 
 def disable_other_bots() -> None:
@@ -173,7 +210,6 @@ def main() -> None:
     os.chdir(DATA)
 
     try:
-        import tomllib
         parsed = tomllib.loads((DATA / "ts3audiobot.toml").read_text(encoding="utf-8"))
         configured_bots = parsed.get("configs", {}).get("bots_path", "bots")
         resolved_bots = Path(configured_bots)
