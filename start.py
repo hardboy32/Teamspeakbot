@@ -52,25 +52,6 @@ def seed_data() -> None:
     root_config.write_text(root_text, encoding="utf-8")
 
 
-def update_bot_load_list(active_ids: set[str]) -> None:
-    root_config = DATA / "ts3audiobot.toml"
-    text = root_config.read_text(encoding="utf-8")
-
-    # TS3AudioBot starts only instances explicitly listed in the root [bots] table.
-    entries = "\n".join(
-        f"{bot_id} = {{ run = true }}" for bot_id in sorted(active_ids)
-    )
-    section = "[bots]\n" + entries + "\n"
-
-    pattern = r"(?ms)^\[bots\]\s*.*?(?=^\[|\Z)"
-    if re.search(pattern, text):
-        text = re.sub(pattern, section, text, count=1)
-    else:
-        text = text.rstrip() + "\n\n" + section
-
-    root_config.write_text(text, encoding="utf-8")
-
-
 def toml_string(value: str) -> str:
     return json.dumps(str(value), ensure_ascii=False)
 
@@ -208,7 +189,6 @@ def main() -> None:
             prepare_bot(item)
         active_ids = {str(item["id"]) for item in instances}
         disable_unlisted_bots(active_ids)
-        update_bot_load_list(active_ids)
     except Exception as exc:
         log(f"CONFIGURATION ERROR: {exc}")
         sys.exit(1)
@@ -220,7 +200,8 @@ def main() -> None:
     log(f"Starting TS3AudioBot with {len(instances)} bot instance(s) from {DATA}.")
     os.execvp("dotnet", [
         "dotnet", "/opt/TS3AudioBot/TS3AudioBot.dll",
-        "--non-interactive", "--stats-disabled"
+        "--non-interactive", "--stats-disabled",
+        "--config", str(DATA / "ts3audiobot.toml")
     ])
 
 
