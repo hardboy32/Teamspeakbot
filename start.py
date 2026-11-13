@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Configure multiple independent TS3AudioBot instances for Railway."""
+"""Configure exactly one TS3AudioBot instance for each Railway deployment."""
 
 import json
 import os
@@ -12,10 +12,15 @@ DATA = Path(os.getenv("DATA_DIR", "/app/data"))
 DEFAULTS = Path("/app/default-data")
 BOTS_DIR = DATA / "bots"
 TEMPLATE = DEFAULTS / "bots" / "default" / "bot.toml"
+BOT_ID = "bot1"
 
 
 def log(message: str) -> None:
     print(f"[TeamSpeak Music Bot] {message}", flush=True)
+
+
+def toml_string(value: str) -> str:
+    return json.dumps(str(value), ensure_ascii=False)
 
 
 def seed_data() -> None:
@@ -25,35 +30,33 @@ def seed_data() -> None:
             raise RuntimeError("Default TS3AudioBot configuration is missing from the image.")
         shutil.copytree(DEFAULTS, DATA, dirs_exist_ok=True)
         log(f"Created configuration in {DATA} (container storage; it may reset on redeploy).")
+
     if not TEMPLATE.exists():
         raise RuntimeError("Default bot template is missing from the image.")
-    BOTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Pin paths explicitly: TS3AudioBot may resolve relative paths from its
-    # assembly directory rather than the process working directory.
+    BOTS_DIR.mkdir(parents=True, exist_ok=True)
     root_config = DATA / "ts3audiobot.toml"
     root_text = root_config.read_text(encoding="utf-8")
+
     root_text, count = re.subn(
         r'(?ms)(\[configs\]\s*.*?^bots_path\s*=\s*)".*?"',
-        lambda _match: _match.group(1) + toml_string(str(BOTS_DIR.resolve())),
+        lambda match: match.group(1) + toml_string(str(BOTS_DIR.resolve())),
         root_text,
         count=1,
     )
     if count != 1:
         raise RuntimeError("Could not set configs.bots_path in ts3audiobot.toml.")
+
     root_text, count = re.subn(
         r'(?ms)(\[web\.interface\]\s*.*?^enabled\s*=\s*)(?:true|false)',
-        lambda _match: _match.group(1) + "false",
+        lambda match: match.group(1) + "false",
         root_text,
         count=1,
     )
     if count != 1:
         raise RuntimeError("Could not disable the unused WebInterface in ts3audiobot.toml.")
+
     root_config.write_text(root_text, encoding="utf-8")
-
-
-def toml_string(value: str) -> str:
-    return json.dumps(str(value), ensure_ascii=False)
 
 
 def replace_value(text: str, pattern: str, replacement: str, label: str) -> str:
@@ -65,109 +68,82 @@ def replace_value(text: str, pattern: str, replacement: str, label: str) -> str:
     return updated
 
 
-def load_instances() -> list[dict]:
-    raw = os.getenv("BOTS_JSON", "").strip()
-    if raw:
-        # Advanced compatibility mode; most users should use BOT1_SERVER, BOT1_PORT, etc.
-        try:
-            instances = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise RuntimeError(f"BOTS_JSON is not valid JSON: {exc}") from exc
-        if not isinstance(instances, list) or not instances:
-            raise RuntimeError("BOTS_JSON must be a non-empty JSON array.")
-    elif os.getenv("BOT1_SERVER", "").strip():
-        # Simple Railway variables: BOT_COUNT, BOT1_SERVER, BOT1_PORT, BOT1_NICKNAME...
-        try:
-            count = int(os.getenv("BOT_COUNT", "1"))
-        except ValueError as exc:
-            raise RuntimeError("BOT_COUNT must be a number.") from exc
-        if count < 1 or count > 20:
-            raise RuntimeError("BOT_COUNT must be between 1 and 20.")
-        instances = []
-        for number in range(1, count + 1):
-            prefix = f"BOT{number}_"
-            server = os.getenv(prefix + "SERVER", "").strip()
-            if not server:
-                raise RuntimeError(f"Missing required variable {prefix}SERVER.")
-            instances.append({
-                "id": f"bot{number}",
-                "server": server,
-                "port": os.getenv(prefix + "PORT", "9987"),
-                "nickname": os.getenv(prefix + "NICKNAME", f"Music Bot {number}"),
-                "channel": os.getenv(prefix + "CHANNEL", ""),
-                "server_password": os.getenv(prefix + "SERVER_PASSWORD", ""),
-                "channel_password": os.getenv(prefix + "CHANNEL_PASSWORD", ""),
-            })
-    else:
-        # Backwards-compatible single-bot configuration.
-        server = os.getenv("TS_SERVER", "").strip()
-        if not server:
-            raise RuntimeError("Set BOT1_SERVER (recommended) or the required TS_SERVER variable.")
-        instances = [{
-            "id": "default",
-            "server": server,
-            "port": os.getenv("TS_PORT", "9987"),
-            "nickname": os.getenv("BOT_NICKNAME", "MusicBot"),
-            "channel": os.getenv("TS_CHANNEL", ""),
-            "server_password": os.getenv("TS_SERVER_PASSWORD", ""),
-            "channel_password": os.getenv("TS_CHANNEL_PASSWORD", ""),
-        }]
+def load_single_bot() -> dict:
+    # Keep the existing BOT1_* variable names so the current Railway setup
+    # continues to work. A deployment is intentionally limited to one bot.
+    count = os.getenv("BOT_COUNT", "").strip()
+    if count and count != "1":
+        raise RuntimeError("This deployment runs exactly one bot. Set BOT_COUNT=1 or remove it.")
 
-    seen = set()
-    for item in instances:
-        if not isinstance(item, dict):
-            raise RuntimeError("Every BOTS_JSON entry must be an object.")
-        bot_id = str(item.get("id", "")).strip()
-        if not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", bot_id):
-            raise RuntimeError(
-                "Every bot needs a unique id containing only letters, numbers, _ or - (max 32 chars)."
-            )
-        if bot_id in seen:
-            raise RuntimeError(f"Duplicate bot id: {bot_id}")
-        seen.add(bot_id)
-        if not str(item.get("server", "")).strip():
-            raise RuntimeError(f"Bot '{bot_id}' is missing its server address.")
-    return instances
+    server = os.getenv("BOT1_SERVER", "").strip() or os.getenv("TS_SERVER", "").strip()
+    if not server:
+        raise RuntimeError("Missing BOT1_SERVER. Enter the TeamSpeak server address in Railway Variables.")
+
+    port = os.getenv("BOT1_PORT", "").strip() or os.getenv("TS_PORT", "9987").strip() or "9987"
+    nickname = (
+        os.getenv("BOT1_NICKNAME", "").strip()
+        or os.getenv("BOT_NICKNAME", "").strip()
+        or "MusicBot"
+    )
+
+    return {
+        "server": server,
+        "port": port,
+        "nickname": nickname,
+        "channel": os.getenv("BOT1_CHANNEL", "").strip() or os.getenv("TS_CHANNEL", "").strip(),
+        "server_password": os.getenv("BOT1_SERVER_PASSWORD", "")
+        or os.getenv("TS_SERVER_PASSWORD", ""),
+        "channel_password": os.getenv("BOT1_CHANNEL_PASSWORD", "")
+        or os.getenv("TS_CHANNEL_PASSWORD", ""),
+    }
 
 
-def prepare_bot(item: dict) -> None:
-    bot_id = str(item["id"]).strip()
-    bot_dir = BOTS_DIR / bot_id
+def prepare_bot(bot: dict) -> None:
+    bot_dir = BOTS_DIR / BOT_ID
     config_path = bot_dir / "bot.toml"
 
     if not config_path.exists():
         bot_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy2(TEMPLATE, config_path)
 
-    server = str(item["server"]).strip()
-    port = str(item.get("port", "9987")).strip()
+    server = bot["server"]
+    port = bot["port"]
     if port and ":" not in server and not server.startswith("["):
         server = f"{server}:{port}"
 
-    values = {
-        "run": "true",
-        "address": "address = " + toml_string(server),
-        "name": "name = " + toml_string(item.get("nickname", bot_id)),
-        "channel": "channel = " + toml_string(item.get("channel", "")),
-        "server_password": "server_password = { pw = " + toml_string(item.get("server_password", "")) + " }",
-        "channel_password": "channel_password = { pw = " + toml_string(item.get("channel_password", "")) + " }",
-    }
-
     text = config_path.read_text(encoding="utf-8")
-    text = replace_value(text, r"(?m)^run\s*=\s*(?:true|false)\s*$", values["run"], "auto-start")
-    text = replace_value(text, r'(?m)^address\s*=\s*".*"\s*$', values["address"], "server address")
-    text = replace_value(text, r'(?m)^name\s*=\s*".*"\s*$', values["name"], "nickname")
-    text = replace_value(text, r'(?m)^channel\s*=\s*".*"\s*$', values["channel"], "channel")
-    text = replace_value(text, r"(?m)^server_password\s*=\s*\{[^\n]*\}\s*$", values["server_password"], "server password")
-    text = replace_value(text, r"(?m)^channel_password\s*=\s*\{[^\n]*\}\s*$", values["channel_password"], "channel password")
+    text = replace_value(text, r"(?m)^run\s*=\s*(?:true|false)\s*$", "true", "auto-start")
+    text = replace_value(
+        text, r'(?m)^address\s*=\s*".*"\s*$',
+        "address = " + toml_string(server), "server address"
+    )
+    text = replace_value(
+        text, r'(?m)^name\s*=\s*".*"\s*$',
+        "name = " + toml_string(bot["nickname"]), "nickname"
+    )
+    text = replace_value(
+        text, r'(?m)^channel\s*=\s*".*"\s*$',
+        "channel = " + toml_string(bot["channel"]), "channel"
+    )
+    text = replace_value(
+        text, r"(?m)^server_password\s*=\s*\{[^\n]*\}\s*$",
+        "server_password = { pw = " + toml_string(bot["server_password"]) + " }",
+        "server password"
+    )
+    text = replace_value(
+        text, r"(?m)^channel_password\s*=\s*\{[^\n]*\}\s*$",
+        "channel_password = { pw = " + toml_string(bot["channel_password"]) + " }",
+        "channel password"
+    )
+
     config_path.write_text(text, encoding="utf-8")
-    log(f"Configured '{bot_id}' as '{item.get('nickname', bot_id)}' -> {server}")
+    log(f"Configured the single bot as '{bot['nickname']}' -> {server}")
 
 
-def disable_unlisted_bots(active_ids: set[str]) -> None:
-    # Keep old bot identities/configuration on disk, but stop bots removed from BOTS_JSON.
+def disable_other_bots() -> None:
+    # Old multi-bot folders are left on disk but are not started.
     for config_path in BOTS_DIR.glob("*/bot.toml"):
-        if config_path.parent.name in active_ids:
+        if config_path.parent.name == BOT_ID:
             continue
         text = config_path.read_text(encoding="utf-8")
         updated, count = re.subn(
@@ -178,26 +154,23 @@ def disable_unlisted_bots(active_ids: set[str]) -> None:
         )
         if count:
             config_path.write_text(updated, encoding="utf-8")
-            log(f"Disabled removed bot '{config_path.parent.name}' (its data is preserved).")
+            log(f"Disabled old bot '{config_path.parent.name}'.")
 
 
 def main() -> None:
     try:
         seed_data()
-        instances = load_instances()
-        for item in instances:
-            prepare_bot(item)
-        active_ids = {str(item["id"]) for item in instances}
-        disable_unlisted_bots(active_ids)
+        bot = load_single_bot()
+        prepare_bot(bot)
+        disable_other_bots()
     except Exception as exc:
         log(f"CONFIGURATION ERROR: {exc}")
         sys.exit(1)
 
-    # TS3AudioBot resolves ts3audiobot.toml and configs.bots_path relative to its
-    # current working directory. Run it from DATA so it loads the files we just generated.
+    # TS3AudioBot resolves its main configuration and bot folder relative to
+    # its working directory. Use the data directory and an explicit config path.
     os.chdir(DATA)
 
-    # Emit safe diagnostics for the exact directory TS3AudioBot will enumerate.
     try:
         import tomllib
         parsed = tomllib.loads((DATA / "ts3audiobot.toml").read_text(encoding="utf-8"))
@@ -205,23 +178,23 @@ def main() -> None:
         resolved_bots = Path(configured_bots)
         if not resolved_bots.is_absolute():
             resolved_bots = DATA / resolved_bots
-        log(f"Diagnostic: configs.bots_path={configured_bots!r}; resolved={resolved_bots}; exists={resolved_bots.is_dir()}")
-        if resolved_bots.is_dir():
-            log(f"Diagnostic: bot folders={sorted(p.name for p in resolved_bots.iterdir() if p.is_dir())}")
-        for item in instances:
-            bot_file = BOTS_DIR / str(item["id"]) / "bot.toml"
-            if bot_file.exists():
-                bot_text = bot_file.read_text(encoding="utf-8")
-                run_match = re.search(r"(?m)^run\s*=\s*(true|false)\s*$", bot_text)
-                log(f"Diagnostic: {bot_file} exists; run={run_match.group(1) if run_match else 'NOT FOUND'}")
+        log(
+            f"Diagnostic: bots_path={configured_bots!r}; "
+            f"resolved={resolved_bots}; exists={resolved_bots.is_dir()}"
+        )
+        bot_file = BOTS_DIR / BOT_ID / "bot.toml"
+        log(f"Diagnostic: single bot config exists={bot_file.is_file()}")
     except Exception as exc:
         log(f"Diagnostic config inspection failed: {exc}")
 
-    log(f"Starting TS3AudioBot with {len(instances)} bot instance(s) from {DATA}.")
+    log(f"Starting TS3AudioBot with exactly 1 bot instance from {DATA}.")
     os.execvp("dotnet", [
-        "dotnet", "/opt/TS3AudioBot/TS3AudioBot.dll",
-        "--non-interactive", "--stats-disabled",
-        "--config", str(DATA / "ts3audiobot.toml")
+        "dotnet",
+        "/opt/TS3AudioBot/TS3AudioBot.dll",
+        "--non-interactive",
+        "--stats-disabled",
+        "--config",
+        str(DATA / "ts3audiobot.toml"),
     ])
 
 
