@@ -15,7 +15,7 @@ BOTS_DIR = DATA / "bots"
 TEMPLATE = DEFAULTS / "bots" / "default" / "bot.toml"
 NLOG_TEMPLATE = Path("/app/NLog.config")
 BOT_ID = "bot1"
-STARTUP_BUILD = "commander-search-rights-v2"
+STARTUP_BUILD = "play-p-toggle-v1"
 
 
 def log(message: str) -> None:
@@ -125,6 +125,7 @@ def install_feature_rights() -> None:
 def install_bot_features(text: str) -> str:
     aliases = (
         "[commands.alias]\n"
+        'p = "!pause"\n'
         'yt = "!search from youtube (!param 0)"\n'
         'ytp = "!xecute (!search from youtube (!param 0)) (!search play 0)"\n'
         'yta = "!xecute (!search from youtube (!param 0)) (!search add 0)"\n'
