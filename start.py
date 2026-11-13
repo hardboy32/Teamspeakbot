@@ -130,6 +130,26 @@ def load_instances() -> list[dict]:
     return instances
 
 
+def update_bot_load_list(instances: list[dict]) -> None:
+    # TS3AudioBot 0.13 still requires the [bots] autorun table in the root
+    # config. The folders alone are not enough to make instances start.
+    root_config = DATA / "ts3audiobot.toml"
+    text = root_config.read_text(encoding="utf-8")
+    entries = "[bots]\n" + "".join(
+        f'{str(item["id"])} = {{ run = true }}\n' for item in instances
+    )
+    pattern = r"(?ms)^\[bots\]\s*.*?(?=^\[|\Z)"
+    if re.search(pattern, text):
+        text = re.sub(pattern, lambda _m: entries + "\n", text, count=1)
+    else:
+        marker = re.search(r"(?m)^\[configs\]\s*$", text)
+        if not marker:
+            raise RuntimeError("Could not find [configs] section to insert the [bots] load list.")
+        text = text[:marker.start()] + entries + "\n" + text[marker.start():]
+    root_config.write_text(text, encoding="utf-8")
+    log("Updated TS3AudioBot [bots] autorun list: " + ", ".join(str(x["id"]) for x in instances))
+
+
 def prepare_bot(item: dict) -> None:
     bot_id = str(item["id"]).strip()
     bot_dir = BOTS_DIR / bot_id
@@ -187,6 +207,7 @@ def main() -> None:
         instances = load_instances()
         for item in instances:
             prepare_bot(item)
+        update_bot_load_list(instances)
         active_ids = {str(item["id"]) for item in instances}
         disable_unlisted_bots(active_ids)
     except Exception as exc:
