@@ -34,7 +34,7 @@ def seed_data() -> None:
     root_config = DATA / "ts3audiobot.toml"
     root_text = root_config.read_text(encoding="utf-8")
     root_text, count = re.subn(
-        r'(?ms)(\\[configs\\]\\s*.*?^bots_path\\s*=\\s*)".*?"',
+        r'(?ms)(\[configs\]\s*.*?^bots_path\s*=\s*)".*?"',
         lambda _match: _match.group(1) + toml_string(str(BOTS_DIR.resolve())),
         root_text,
         count=1,
@@ -42,7 +42,7 @@ def seed_data() -> None:
     if count != 1:
         raise RuntimeError("Could not set configs.bots_path in ts3audiobot.toml.")
     root_text, count = re.subn(
-        r'(?ms)(\\[web\\.interface\\]\\s*.*?^enabled\\s*=\\s*)(?:true|false)',
+        r'(?ms)(\[web\.interface\]\s*.*?^enabled\s*=\s*)(?:true|false)',
         lambda _match: _match.group(1) + "false",
         root_text,
         count=1,
