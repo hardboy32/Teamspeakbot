@@ -155,13 +155,13 @@ def prepare_bot(bot: dict) -> None:
 
     if identity_key:
         text = replace_value(
-            text, r'(?ms)(\[connect\.identity\].*?^key\s*=\s*)".*?"',
-            lambda_value := "key = " + toml_string(identity_key),
+            text, r'(?m)^key\s*=\s*".*"\s*$',
+            "key = " + toml_string(identity_key),
             "existing TeamSpeak identity"
         )
         if identity_offset is not None:
             text = replace_value(
-                text, r"(?ms)(\[connect\.identity\].*?^offset\s*=\s*)\d+",
+                text, r"(?m)^offset\s*=\s*\d+\s*$",
                 "offset = " + str(int(identity_offset)),
                 "existing identity offset"
             )
