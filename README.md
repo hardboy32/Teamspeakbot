@@ -35,12 +35,12 @@ Enter the server and port together in `TS_SERVER`, such as `46.38.138.68:4485`. 
 | Command | What it does |
 |---|---|
 | `!play <URL>` | Plays a direct link or supported media URL |
-| `!play` | Resumes paused playback |
+| `!p` | Toggles pause/resume: pauses playing music or resumes paused music |
 | `!ytp <song name>` | Searches YouTube and plays the first result |
 | `!yt <song name>` | Searches YouTube and displays matching results |
 | `!yta <song name>` | Searches YouTube and adds the first result to the queue |
 
-The built-in `!play` command is kept intact for links and resume. Use `!ytp` for a song name, for example `!ytp مهدی جهانی`.
+Use `!play <URL>` for a link, `!p` to toggle pause/resume, and `!ytp` for a song name, for example `!ytp مهدی جهانی`.
 
 ## Channel Commander indicator
 
