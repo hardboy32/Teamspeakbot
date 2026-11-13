@@ -13,7 +13,9 @@ DATA = Path(os.getenv("DATA_DIR", "/app/data"))
 DEFAULTS = Path("/app/default-data")
 BOTS_DIR = DATA / "bots"
 TEMPLATE = DEFAULTS / "bots" / "default" / "bot.toml"
+NLOG_TEMPLATE = Path("/app/NLog.config")
 BOT_ID = "bot1"
+STARTUP_BUILD = "exception-diagnostics-v1"
 
 
 def log(message: str) -> None:
@@ -67,6 +69,15 @@ def replace_value(text: str, pattern: str, replacement: str, label: str) -> str:
     if count != 1:
         raise RuntimeError(f"Could not update {label} in bot.toml; configuration format changed.")
     return updated
+
+
+def install_diagnostic_logging() -> None:
+    if not NLOG_TEMPLATE.is_file():
+        raise RuntimeError("Diagnostic NLog.config is missing from the image.")
+    # TS3AudioBot reads NLog.config from its current working directory and
+    # otherwise creates the stock config whose console layout hides exceptions.
+    shutil.copy2(NLOG_TEMPLATE, DATA / "NLog.config")
+    log("Installed diagnostic NLog config; console will include full exceptions.")
 
 
 def load_single_bot() -> dict:
@@ -196,8 +207,10 @@ def disable_other_bots() -> None:
 
 
 def main() -> None:
+    log(f"Startup script build: {STARTUP_BUILD}")
     try:
         seed_data()
+        install_diagnostic_logging()
         bot = load_single_bot()
         prepare_bot(bot)
         disable_other_bots()
