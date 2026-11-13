@@ -5,9 +5,10 @@ A TeamSpeak 3 music bot for Railway. One Railway deployment can run several inde
 ## Railway setup
 
 1. Create a Railway service from this GitHub repository.
-2. Add a Railway **Volume** and set its mount path to `/data`.
-3. Open **Variables** and add the variables below.
-4. Deploy the service.
+2. Open **Variables** and add the variables below.
+3. Deploy the service.
+
+No Volume is required. The bot stores its data in the container filesystem. **Important:** Railway may replace this storage during redeploys/restarts, which can reset the bot identity and saved settings.
 
 No JSON or code is needed for the normal setup.
 
@@ -47,7 +48,7 @@ For a third bot, set `BOT_COUNT` to `3` and add the same variables with `BOT3_` 
 
 ## Important notes
 
-- Keep the Railway Volume mounted at `/data`; it preserves each bot's identity and settings between deployments.
+- No Volume is required. Without a Volume, the bot identity and saved settings are not guaranteed to survive redeploys or container replacement.
 - TeamSpeak voice normally uses UDP port `9987`. Railway must allow outbound UDP traffic for voice connections to work.
 - The number of bots depends on Railway CPU/RAM and the available TeamSpeak server slots.
 - If a bot cannot join, check the server address, port, passwords, firewall/whitelist, and channel name.
