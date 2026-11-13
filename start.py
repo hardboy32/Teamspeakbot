@@ -212,7 +212,7 @@ def main() -> None:
             bot_file = BOTS_DIR / str(item["id"]) / "bot.toml"
             if bot_file.exists():
                 bot_text = bot_file.read_text(encoding="utf-8")
-                run_match = re.search(r"(?m)^run\\s*=\\s*(true|false)\\s*$", bot_text)
+                run_match = re.search(r"(?m)^run\s*=\s*(true|false)\s*$", bot_text)
                 log(f"Diagnostic: {bot_file} exists; run={run_match.group(1) if run_match else 'NOT FOUND'}")
     except Exception as exc:
         log(f"Diagnostic config inspection failed: {exc}")
