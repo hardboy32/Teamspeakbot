@@ -170,8 +170,7 @@ def main() -> None:
         log(f"CONFIGURATION ERROR: {exc}")
         sys.exit(1)
 
-    log(f"Starting TS3AudioBot with {len(instances)} bot instance(s).")
-    os.execvp("dotnet", [
+    # TS3AudioBot resolves ts3audiobot.toml and configs.bots_path relative to its\n    # current working directory. Run it from DATA so it loads the files we just generated.\n    os.chdir(DATA)\n\n    log(f"Starting TS3AudioBot with {len(instances)} bot instance(s) from {DATA}.")\n    os.execvp("dotnet", [
         "dotnet", "/opt/TS3AudioBot/TS3AudioBot.dll",
         "--non-interactive", "--stats-disabled"
     ])
