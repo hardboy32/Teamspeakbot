@@ -15,7 +15,7 @@ BOTS_DIR = DATA / "bots"
 TEMPLATE = DEFAULTS / "bots" / "default" / "bot.toml"
 NLOG_TEMPLATE = Path("/app/NLog.config")
 BOT_ID = "bot1"
-STARTUP_BUILD = "commander-and-youtube-search-v1"
+STARTUP_BUILD = "commander-search-rights-v2"
 
 
 def log(message: str) -> None:
@@ -87,6 +87,10 @@ def install_feature_rights() -> None:
         return
 
     rights_text = rights_path.read_text(encoding="utf-8")
+    rights_text = rights_text.replace(
+        "# Basic stuff. Scripting (cmd.eval, cmd.xecute, cmd.json.*) stays with the admin rule.",
+        "# Command chaining (cmd.xecute) is enabled for the built-in music aliases; eval/json stay admin-only.",
+    )
     required = (
         "cmd.xecute",
         "cmd.param",
