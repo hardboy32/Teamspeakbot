@@ -75,26 +75,18 @@ def load_single_bot() -> dict:
     if count and count != "1":
         raise RuntimeError("This deployment runs exactly one bot. Set BOT_COUNT=1 or remove it.")
 
-    server = os.getenv("TS_SERVER", "").strip() or os.getenv("TS_SERVER", "").strip()
+    server = os.getenv("TS_SERVER", "").strip()
     if not server:
-        raise RuntimeError("Missing TS_SERVER. Enter the TeamSpeak server address in Railway Variables.")
+        raise RuntimeError("Missing TS_SERVER. Enter the TeamSpeak address as host:port, for example 46.38.138.68:4485.")
 
-    port = os.getenv("TS_PORT", "").strip() or os.getenv("TS_PORT", "9987").strip() or "9987"
-    nickname = (
-        os.getenv("BOT_NICKNAME", "").strip()
-        or os.getenv("BOT_NICKNAME", "").strip()
-        or "MusicBot"
-    )
+    nickname = os.getenv("BOT_NICKNAME", "").strip() or "MusicBot"
 
     return {
         "server": server,
-        "port": port,
         "nickname": nickname,
-        "channel": os.getenv("TS_CHANNEL", "").strip() or os.getenv("TS_CHANNEL", "").strip(),
-        "server_password": os.getenv("TS_SERVER_PASSWORD", "")
-        or os.getenv("TS_SERVER_PASSWORD", ""),
-        "channel_password": os.getenv("TS_CHANNEL_PASSWORD", "")
-        or os.getenv("TS_CHANNEL_PASSWORD", ""),
+        "channel": os.getenv("TS_CHANNEL", "").strip(),
+        "server_password": os.getenv("TS_SERVER_PASSWORD", ""),
+        "channel_password": os.getenv("TS_CHANNEL_PASSWORD", ""),
     }
 
 
@@ -107,9 +99,13 @@ def prepare_bot(bot: dict) -> None:
         shutil.copy2(TEMPLATE, config_path)
 
     server = bot["server"]
-    port = bot["port"]
-    if port and ":" not in server and not server.startswith("["):
-        server = f"{server}:{port}"
+    # TS_SERVER accepts host:port in one variable. If the port is omitted,
+    # retain TeamSpeak's usual voice port as a convenience default.
+    if server.startswith("["):
+        if "]:" not in server:
+            server = f"{server}:9987"
+    elif server.count(":") == 0:
+        server = f"{server}:9987"
 
     text = config_path.read_text(encoding="utf-8")
     text = replace_value(text, r"(?m)^run\s*=\s*(?:true|false)\s*$", "true", "auto-start")
